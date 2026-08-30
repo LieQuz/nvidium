@@ -50,16 +50,31 @@ public class NvidiumCompactChunkVertex implements ChunkVertexType {
 
     @Override
     public ChunkVertexEncoder getEncoder() {
-        return (ptr, material, vertex, sectionIndex) -> {
-            int light = compactLight(vertex.light);
+        return new ChunkVertexEncoder() {
+            @Override
+            public long write(long ptr, Material material, Vertex vertex, int sectionIndex) {
+                return writeVertex(ptr, material, vertex);
+            }
 
-            MemoryUtil.memPutInt(ptr + 0, (encodePosition(vertex.x) << 0) | (encodePosition(vertex.y) << 16));
-            MemoryUtil.memPutInt(ptr + 4, (encodePosition(vertex.z) << 0) | (encodeDrawParameters(material) << 16) | ((light&0xFF)<<24));
-            MemoryUtil.memPutInt(ptr + 8, (encodeColor(vertex.color) << 0) | (((light>>8)&0xFF) << 24));
-            MemoryUtil.memPutInt(ptr + 12, encodeTexture(vertex.u, vertex.v));
+            public long write(long ptr, Material material, Vertex[] vertices, int sectionIndex) {
+                for (Vertex vertex : vertices) {
+                    ptr = writeVertex(ptr, material, vertex);
+                }
 
-            return ptr + STRIDE;
+                return ptr;
+            }
         };
+    }
+
+    private static long writeVertex(long ptr, Material material, ChunkVertexEncoder.Vertex vertex) {
+        int light = compactLight(vertex.light);
+
+        MemoryUtil.memPutInt(ptr + 0, (encodePosition(vertex.x) << 0) | (encodePosition(vertex.y) << 16));
+        MemoryUtil.memPutInt(ptr + 4, (encodePosition(vertex.z) << 0) | (encodeDrawParameters(material) << 16) | ((light & 0xFF) << 24));
+        MemoryUtil.memPutInt(ptr + 8, (encodeColor(vertex.color) << 0) | (((light >> 8) & 0xFF) << 24));
+        MemoryUtil.memPutInt(ptr + 12, encodeTexture(vertex.u, vertex.v));
+
+        return ptr + STRIDE;
     }
 
 
